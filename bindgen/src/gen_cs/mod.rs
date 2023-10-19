@@ -20,6 +20,7 @@ mod compounds;
 mod custom;
 mod enum_;
 mod error;
+mod executor;
 mod external;
 mod miscellany;
 mod object;
@@ -254,7 +255,7 @@ impl<T: AsType> AsCodeType for T {
             Type::CallbackInterface(id) => {
                 Box::new(callback_interface::CallbackInterfaceCodeType::new(id))
             }
-            Type::ForeignExecutor => panic!("TODO implement async"),
+            Type::ForeignExecutor => Box::new(executor::ForeignExecutorCodeType),
             Type::Optional(inner) => Box::new(compounds::OptionalCodeType::new(*inner)),
             Type::Sequence(inner) => Box::new(compounds::SequenceCodeType::new(*inner)),
             Type::Map(key, value) => Box::new(compounds::MapCodeType::new(*key, *value)),
@@ -322,12 +323,12 @@ impl CsCodeOracle {
             FfiType::RustBuffer(_) => "RustBuffer".to_string(),
             FfiType::ForeignBytes => "ForeignBytes".to_string(),
             FfiType::ForeignCallback => "ForeignCallback".to_string(),
-            FfiType::ForeignExecutorHandle => panic!("TODO implement async"),
-            FfiType::ForeignExecutorCallback => panic!("TODO implement async"),
-            FfiType::FutureCallback { .. } => {
-                panic!("TODO implement async")
-            }
-            FfiType::FutureCallbackData => panic!("TODO implement async"),
+            FfiType::ForeignExecutorHandle => "IntPtr".to_string(),
+            FfiType::ForeignExecutorCallback => "UniFfiForeignExecutorCallback.Delegate".to_string(),
+            FfiType::FutureCallback { return_type } => {
+                format!("UniFfiFutureCallback{}", self.ffi_type_label(return_type))
+            },
+            FfiType::FutureCallbackData => "IntPtr".to_string(),
         }
     }
 }
@@ -410,6 +411,37 @@ pub mod filters {
         ))
     }
 
+    pub fn error_handler(result_type: &ResultType) -> Result<String, askama::Error> {
+        match &result_type.throws_type {
+            Some(error_type) => Ok(CsCodeOracle.error_name(&type_name(error_type)?)),
+            None => Ok("NullCallStatusErrorHandler".into()),
+        }
+    }
+
+    pub fn future_callback_handler(result_type: &ResultType) -> Result<String, askama::Error> {
+        let return_component = match &result_type.return_type {
+            Some(return_type) => CsCodeOracle.find(return_type).canonical_name(),
+            None => "Void".into(),
+        };
+        let throws_component = match &result_type.throws_type {
+            Some(throws_type) => {
+                format!("_{}", CsCodeOracle.find(throws_type).canonical_name())
+            }
+            None => "".into(),
+        };
+        Ok(format!(
+            "UniFfiFutureCallbackHandler{return_component}{throws_component}"
+        ))
+    }
+
+    pub fn future_completion_type(result_type: &ResultType) -> Result<String, askama::Error> {
+        let return_type_name = match &result_type.return_type {
+            Some(t) => type_name(t)?,
+            None => "bool".into(),
+        };
+        Ok(format!("TaskCompletionSource<{return_type_name}>"))
+    }
+
     pub fn render_literal(
         literal: &Literal,
         as_ct: &impl AsCodeType,
@@ -425,6 +457,20 @@ pub mod filters {
     /// Get the idiomatic C# rendering of a class name (for enums, records, errors, etc).
     pub fn class_name(nm: &str) -> Result<String, askama::Error> {
         Ok(oracle().class_name(nm))
+    }
+
+    // Some FfiTypes have the same ffi_type_label - this makes a vec of them unique.
+    pub fn unique_ffi_types(
+        types: impl Iterator<Item = FfiType>,
+    ) -> Result<impl Iterator<Item = FfiType>, askama::Error> {
+        let mut seen = HashSet::new();
+        let mut result = Vec::new();
+        for t in types {
+            if seen.insert(CsCodeOracle.ffi_type_label(&t)) {
+                result.push(t)
+            }
+        }
+        Ok(result.into_iter())
     }
 
     /// Get the idiomatic C# rendering of a function name.

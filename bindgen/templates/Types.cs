@@ -100,7 +100,11 @@
 {% include "ExternalTypeTemplate.cs" %}
 
 {%- when Type::ForeignExecutor %}
-{{ "ForeignExecutor not implemented in Types.cs {}"|panic }}
+{% include "ForeignExecutorTemplate.cs" %}
 
 {%- endmatch %}
 {%- endfor %}
+
+{%- if ci.has_async_fns() %}
+{% include "AsyncTypes.cs" %}
+{%- endif %}

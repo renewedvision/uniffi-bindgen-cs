@@ -8,11 +8,11 @@
 
 {%- call cs::docstring(obj, 0) %}
 public interface I{{ type_name }} {
-    {% for meth in obj.methods() -%}
-    {%- call cs::docstring(meth, 4) %}
-    {%- call cs::method_throws_annotation(meth.throws_type()) %}
-    {% match meth.return_type() -%} {%- when Some with (return_type) -%} {{ return_type|type_name }} {%- when None %}void{%- endmatch %} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %});
-    {% endfor %}
+    {%- for func in obj.methods() %}
+    {%- call cs::docstring(func, 4) %}
+    {%- call cs::method_throws_annotation(func.throws_type()) %}
+    {% call cs::return_type(func) %} {{ func.name()|fn_name }}({% call cs::arg_list_decl(func) %});
+    {%- endfor %}
 }
 
 public class {{ safe_handle_type }}: FFISafeHandle {
@@ -40,21 +40,45 @@ public class {{ type_name }}: FFIObject<{{ safe_handle_type }}>, I{{ type_name }
     {%- when None %}
     {%- endmatch %}
 
-    {% for meth in obj.methods() -%}
-    {%- call cs::docstring(meth, 4) %}
-    {%- call cs::method_throws_annotation(meth.throws_type()) %}
-    {%- match meth.return_type() -%}
-
+    {% for func in obj.methods() -%}
+    {%- call cs::docstring(func, 4) %}
+    {%- call cs::method_throws_annotation(func.throws_type()) %}
+    {%- if func.is_async() %}
+    public async {% call cs::return_type(func) %} {{ func.name()|fn_name }}({%- call cs::arg_list_decl(func) -%}) {
+        var completionSource = new TaskCompletionSource<{% call cs::task_completion_type(func.return_type()) %}>();
+        var gcHandle = GCHandle.Alloc(completionSource);
+        try {
+            _UniffiHelpers.RustCall((ref RustCallStatus _status) => {
+                _UniFFILib.{{ func.ffi_func().name() }}(
+                    this.GetHandle(),
+                    {%- call cs::lower_arg_list(func) -%}{% if func.arguments().len() > 0 %},{% endif %}
+                    IntPtr.Zero,
+                    {{ func.result_type().borrow()|future_callback_handler }}.INSTANCE,
+                    GCHandle.ToIntPtr(gcHandle),
+                    ref _status);
+            });
+            {%- if func.return_type().is_some() %}
+            return await completionSource.Task;
+            {%- else %}
+            await completionSource.Task;
+            {%- endif %}
+        } finally {
+            gcHandle.Free();
+        }
+    }
+    {%- else %}
+    {%- match func.return_type() -%}
     {%- when Some with (return_type) %}
-    public {{ return_type|type_name }} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %});
+    public {{ return_type|type_name }} {{ func.name()|fn_name }}({% call cs::arg_list_decl(func) %}) {
+        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", func) %});
     }
-
     {%- when None %}
-    public void {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        {%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %};
+    public void {{ func.name()|fn_name }}({% call cs::arg_list_decl(func) %}) {
+        {%- call cs::to_ffi_call_with_prefix("this.GetHandle()", func) %};
     }
-    {% endmatch %}
+    {%- endmatch %}
+    {%- endif %}
+
     {% endfor %}
 
     {% if !obj.alternate_constructors().is_empty() -%}

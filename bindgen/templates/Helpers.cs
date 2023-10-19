@@ -88,10 +88,19 @@ class _UniffiHelpers {
     {
         var status = new RustCallStatus();
         var return_value = callback(ref status);
+        _UniffiHelpers.CheckCallStatus(errorHandler, status);
+        return return_value;
+    }
+
+    public static void CheckCallStatus<E>(CallStatusErrorHandler<E> errorHandler, RustCallStatus status)
+        where E: UniffiException
+    {
         if (status.IsSuccess()) {
-            return return_value;
+            return;
+
         } else if (status.IsError()) {
             throw errorHandler.Lift(status.error_buf);
+
         } else if (status.IsPanic()) {
             // when the rust code sees a panic, it tries to construct a rustbuffer
             // with the message.  but if that code panics, then it just sends back
@@ -101,6 +110,7 @@ class _UniffiHelpers {
             } else {
                 throw new PanicException("Rust panic");
             }
+
         } else {
             throw new InternalException($"Unknown rust call status: {status.code}");
         }

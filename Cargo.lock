@@ -1027,6 +1027,7 @@ dependencies = [
  "uniffi-fixture-coverall",
  "uniffi-fixture-docstring",
  "uniffi-fixture-external-types",
+ "uniffi-fixture-futures",
  "uniffi-fixture-time",
 ]
 
@@ -1145,6 +1146,14 @@ dependencies = [
  "bytes",
  "crate_one",
  "crate_two",
+ "uniffi",
+]
+
+[[package]]
+name = "uniffi-fixture-futures"
+version = "0.21.0"
+dependencies = [
+ "tokio",
  "uniffi",
 ]
 
