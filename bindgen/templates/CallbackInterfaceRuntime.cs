@@ -55,7 +55,7 @@ class ConcurrentHandleMap<T> where T: notnull {
 }
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-internal delegate int ForeignCallback(ulong handle, int method, IntPtr argsData, int argsLength, ref RustBuffer outBuf);
+internal delegate int ForeignCallback(ulong handle, uint method, IntPtr argsData, int argsLength, ref RustBuffer outBuf);
 
 internal abstract class FfiConverterCallbackInterface<CallbackInterface>
         : FfiConverter<CallbackInterface, ulong>

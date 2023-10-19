@@ -29,7 +29,7 @@ class {{ foreign_callback }} {
     // argument creates an implicit delegate object, that is later going to be collected by GC. Any
     // attempt to invoke a garbage collected delegate results in an error:
     //   > A callback was made on a garbage collected delegate of type 'ForeignCallback::..'
-    public static ForeignCallback INSTANCE = (ulong handle, int method, IntPtr argsData, int argsLength, ref RustBuffer outBuf) => {
+    public static ForeignCallback INSTANCE = (ulong handle, uint method, IntPtr argsData, int argsLength, ref RustBuffer outBuf) => {
         var cb = {{ type_|lift_fn }}(handle);
         switch (method) {
             case 0: {
