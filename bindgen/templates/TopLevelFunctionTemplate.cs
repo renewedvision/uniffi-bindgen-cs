@@ -6,7 +6,7 @@
 {%- call cs::method_throws_annotation(func.throws_type()) %}
 {%- match func.return_type() -%}
 {%- when Some with (return_type) %}
-    public static {{ return_type|type_name }} {{ func.name()|fn_name }}({%- call cs::arg_list_decl(func) -%}) {
+    public static {{ return_type|type_name(ci) }} {{ func.name()|fn_name }}({%- call cs::arg_list_decl(func) -%}) {
         return {{ return_type|lift_fn }}({% call cs::to_ffi_call(func) %});
     }
 {% when None %}

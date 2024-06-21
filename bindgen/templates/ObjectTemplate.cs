@@ -11,7 +11,7 @@
     {% for meth in obj.methods() -%}
     {%- call cs::docstring(meth, 4) %}
     {%- call cs::method_throws_annotation(meth.throws_type()) %}
-    {% match meth.return_type() -%} {%- when Some with (return_type) -%} {{ return_type|type_name }} {%- when None %}void{%- endmatch %} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %});
+    {% match meth.return_type() -%} {%- when Some with (return_type) -%} {{ return_type|type_name(ci) }} {%- when None %}void{%- endmatch %} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %});
     {% endfor %}
 }
 
@@ -46,7 +46,7 @@
     {%- match meth.return_type() -%}
 
     {%- when Some with (return_type) %}
-    public {{ return_type|type_name }} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
+    public {{ return_type|type_name(ci) }} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
         return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %});
     }
 
