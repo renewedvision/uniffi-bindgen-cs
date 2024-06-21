@@ -49,7 +49,7 @@ class {{ e|ffi_converter_name }}: FfiConverterRustBuffer<{{ type_name }}> {
     {% else -%}
     public record {{ variant.name()|class_name }} (
         {% for field in variant.fields() -%}
-        {{ field|type_name}} {{ field.name()|var_name }}{% if !loop.last %},{% endif %}
+        {{ field|type_name(ci)}} {{ field.name()|var_name }}{% if !loop.last %},{% endif %}
         {%- endfor %}
     ) : {{ type_name }} {}
     {%- endif %}

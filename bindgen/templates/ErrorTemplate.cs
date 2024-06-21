@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */#}
 
-{%- let type_name = type_|as_error|type_name %}
+{%- let type_name = type_|as_error|type_name(ci) %}
 {%- let ffi_converter_name = type_|as_error|ffi_converter_name %}
 {%- let canonical_type_name = type_|as_error|canonical_name %}
 
@@ -64,13 +64,13 @@ class {{ ffi_converter_name }} : FfiConverterRustBuffer<{{ type_name }}>, CallSt
     public class {{ variant.name()|exception_name }} : {{ type_name }} {
         // Members
         {%- for field in variant.fields() %}
-        public {{ field|type_name}} {{ field.name()|var_name }};
+        public {{ field|type_name(ci)}} {{ field.name()|var_name }};
         {%- endfor %}
 
         // Constructor
         public {{ variant.name()|exception_name }}(
                 {%- for field in variant.fields() %}
-                {{ field|type_name}} {{ field.name()|var_name }}{% if loop.last %}{% else %}, {% endif %}
+                {{ field|type_name(ci)}} {{ field.name()|var_name }}{% if loop.last %}{% else %}, {% endif %}
                 {%- endfor %}) {
             {%- for field in variant.fields() %}
             this.{{ field.name()|var_name }} = {{ field.name()|var_name }};
