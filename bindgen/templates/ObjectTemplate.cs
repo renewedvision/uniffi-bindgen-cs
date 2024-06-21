@@ -21,7 +21,7 @@
     public {{ safe_handle_type }}(IntPtr pointer): base(pointer) {
     }
     override protected bool ReleaseHandle() {
-        _UniffiHelpers.RustCall((ref RustCallStatus status) => {
+        _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
             _UniFFILib.{{ obj.ffi_object_free().name() }}(this.handle, ref status);
         });
         return true;
