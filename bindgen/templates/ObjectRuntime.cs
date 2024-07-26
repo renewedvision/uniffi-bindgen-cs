@@ -14,7 +14,7 @@
         this.handle = handle;
     }
 
-    public THandle GetHandle() {
+    public THandle _uniffiSafeHandle() {
         return handle;
     }
 

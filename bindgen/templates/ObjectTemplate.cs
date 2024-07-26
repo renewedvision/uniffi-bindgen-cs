@@ -16,14 +16,20 @@
 }
 
 {{ config.access_modifier() }} class {{ safe_handle_type }}: FFISafeHandle {
+    bool owner = true;
     public {{ safe_handle_type }}(): base() {
     }
     public {{ safe_handle_type }}(IntPtr pointer): base(pointer) {
     }
+    public void ReleaseOwnership() {
+        owner = false;
+    }
     override protected bool ReleaseHandle() {
-        _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
-            _UniFFILib.{{ obj.ffi_object_free().name() }}(this.handle, ref status);
-        });
+        if (owner) {
+            _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
+                _UniFFILib.{{ obj.ffi_object_free().name() }}(this.handle, ref status);
+            });
+        }
         return true;
     }
 }
@@ -47,12 +53,12 @@
 
     {%- when Some with (return_type) %}
     public {{ return_type|type_name(ci) }} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %});
+        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this._uniffiCloneHandle()", meth) %});
     }
 
     {%- when None %}
     public void {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        {%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %};
+        {%- call cs::to_ffi_call_with_prefix("this._uniffiCloneHandle()", meth) %};
     }
     {% endmatch %}
     {% endfor %}
@@ -61,7 +67,7 @@
     {%- match tm %}
     {%- when UniffiTrait::Display { fmt } %}
     public override string ToString() {
-        return {{ Type::String.borrow()|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", fmt) %});
+        return {{ Type::String.borrow()|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this._uniffiCloneHandle()", fmt) %});
     }
     {%- else %}
     {%- endmatch %}
@@ -76,13 +82,22 @@
     }
     {% endfor %}
     {% endif %}
+
+    public {{ safe_handle_type }} _uniffiCloneHandle() {
+        return _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
+            var cloned = _UniFFILib.{{ obj.ffi_object_clone().name() }}(this._uniffiSafeHandle(), ref status);
+            // 
+            cloned.ReleaseOwnership();
+            return cloned;
+        });
+    }
 }
 
 class {{ obj|ffi_converter_name }}: FfiConverter<{{ type_name }}, {{ safe_handle_type }}> {
     public static {{ obj|ffi_converter_name }} INSTANCE = new {{ obj|ffi_converter_name }}();
 
     public override {{ safe_handle_type }} Lower({{ type_name }} value) {
-        return value.GetHandle();
+        return value._uniffiCloneHandle();
     }
 
     public override {{ type_name }} Lift({{ safe_handle_type }} value) {
