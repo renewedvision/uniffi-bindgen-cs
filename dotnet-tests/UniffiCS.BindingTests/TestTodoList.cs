@@ -54,37 +54,22 @@ public class TestTodoList
         // Note that each individual object instance needs to be explicitly destroyed,
         // either by using the `.use` helper or explicitly calling its `.destroy` method.
         // Failure to do so will leak the underlying Rust object.
-        using (var todo2 = new TodoList())
-        {
-            TodolistMethods.SetDefaultList(todo);
-            using (var defaultList = TodolistMethods.GetDefaultList())
-            {
-                Assert.NotNull(defaultList);
-                Assert.Equal(todo.GetEntries(), defaultList.GetEntries());
-                Assert.NotEqual(todo2.GetEntries(), defaultList.GetEntries());
-            }
+        var todo2 = new TodoList();
+        TodolistMethods.SetDefaultList(todo);
 
-            todo2.MakeDefault();
-            using (var defaultList = TodolistMethods.GetDefaultList())
-            {
-                Assert.NotEqual(todo.GetEntries(), defaultList.GetEntries());
-                Assert.Equal(todo2.GetEntries(), defaultList.GetEntries());
-            }
+        Assert.Equal(todo.GetEntries(), TodolistMethods.GetDefaultList().GetEntries());
+        Assert.NotEqual(todo2.GetEntries(), TodolistMethods.GetDefaultList().GetEntries());
 
-            todo.AddItem("Test liveness after being demoted from default");
-            Assert.Equal("Test liveness after being demoted from default", todo.GetLast());
+        todo2.MakeDefault();
+        Assert.NotEqual(todo.GetEntries(), TodolistMethods.GetDefaultList().GetEntries());
+        Assert.Equal(todo2.GetEntries(), TodolistMethods.GetDefaultList().GetEntries());
 
-            todo2.AddItem("Test shared state through local vs default reference");
-            using (var defaultList = TodolistMethods.GetDefaultList())
-            {
-                Assert.Equal("Test shared state through local vs default reference", defaultList.GetLast());
-            }
-        }
+        todo.AddItem("Test liveness after being demoted from default");
+        Assert.Equal("Test liveness after being demoted from default", todo.GetLast());
+
+        todo2.AddItem("Test shared state through local vs default reference");
+        Assert.Equal("Test shared state through local vs default reference", TodolistMethods.GetDefaultList().GetLast());
 
 #pragma warning restore CS8602
-
-        // Ensure the kotlin version of deinit doesn't crash, and is idempotent.
-        todo.Dispose();
-        todo.Dispose();
     }
 }

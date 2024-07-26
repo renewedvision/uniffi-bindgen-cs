@@ -98,8 +98,6 @@ public class TestRondpoint
         // unsigned record
         var nombres = (int v) => new DictionnaireNombres((byte)v, (ushort)v, (uint)v, (ulong)v);
         AffirmAllerRetour(rt.IdentiqueNombres, nombres(0), nombres(1));
-
-        rt.Dispose();
     }
 
     [Fact]
@@ -146,8 +144,6 @@ public class TestRondpoint
             Double.MaxValue,
             Double.Epsilon
         );
-
-        st.Dispose();
     }
 
     [Fact]
@@ -240,8 +236,6 @@ public class TestRondpoint
 
         // Enums
         AffirmAllerRetour(op.SinonEnum, Enumeration.Un, Enumeration.Deux, Enumeration.Trois);
-
-        op.Dispose();
     }
 
     [Fact]
@@ -271,18 +265,16 @@ public class TestRondpoint
         };
         Assert.Equal(defaultes, explicite);
 
-        using (var rt = new Retourneur())
+        var rt = new Retourneur();
+        // a default list value (null) is transformed into an empty list after a roundtrip
+        defaultes = defaultes with
         {
-            // a default list value (null) is transformed into an empty list after a roundtrip
-            defaultes = defaultes with
-            {
-                listVar = new List<String>()
-            };
+            listVar = new List<String>()
+        };
 
-            // TODO(CS): C# record comparison doesn't work if the record contains lists/maps.
-            // Rewrite records to use custom struct type.
-            // AffirmAllerRetour(rt.IdentiqueOptionneurDictionnaire, defaultes);
-        }
+        // TODO(CS): C# record comparison doesn't work if the record contains lists/maps.
+        // Rewrite records to use custom struct type.
+        // AffirmAllerRetour(rt.IdentiqueOptionneurDictionnaire, defaultes);
     }
 
     static void AffirmAllerRetour<T>(Func<T, T> callback, params T[] list)

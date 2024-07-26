@@ -1,16 +1,16 @@
 [package]
-name = "uniffi-cs-disposable-fixture"
+name = "uniffi-cs-objects"
 version = "1.0.0"
 edition = "2021"
 publish = false
 
 [lib]
 crate-type = ["lib", "cdylib"]
-name = "uniffi_cs_disposable"
+name = "objects"
 
 [dependencies]
+crossbeam = "0.8.2"
 once_cell = "1.12"
-thiserror = "1.0"
 uniffi = {path = "../../3rd-party/uniffi-rs/uniffi", features=["build"]}
 uniffi_macros = {path = "../../3rd-party/uniffi-rs/uniffi_macros"}
 
