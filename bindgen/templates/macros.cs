@@ -65,8 +65,8 @@
 // Note unfiltered name but ffi_type_name filters.
 -#}
 {%- macro arg_list_ffi_decl(func) %}
-    {%- if func.is_object_free_function() %}
-    IntPtr ptr,
+    {%- if func.is_object_clone_function() %}
+    SafeHandle ptr,
     {%- if func.has_rust_call_status_arg() %}ref UniffiRustCallStatus _uniffi_out_err{% endif %}
     {%- else %}
     {%- call arg_list_ffi_decl_xx(func) %}

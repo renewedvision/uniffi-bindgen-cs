@@ -30,7 +30,7 @@
 
 {%- call cs::docstring(obj, 0) %}
 {{ config.access_modifier() }} class {{ type_name }}: FFIObject<{{ safe_handle_type }}>, I{{ type_name }} {
-    public {{ type_name }}({{ safe_handle_type }} pointer): base(pointer) {}
+    public {{ type_name }}(IntPtr pointer): base(new {{ safe_handle_type }}(pointer)) {}
 
     {%- match obj.primary_constructor() %}
     {%- when Some with (cons) %}
@@ -47,12 +47,12 @@
 
     {%- when Some with (return_type) %}
     public {{ return_type|type_name(ci) }} {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %});
+        return {{ return_type|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this._uniffiClonePointer()", meth) %});
     }
 
     {%- when None %}
     public void {{ meth.name()|fn_name }}({% call cs::arg_list_decl(meth) %}) {
-        {%- call cs::to_ffi_call_with_prefix("this.GetHandle()", meth) %};
+        {%- call cs::to_ffi_call_with_prefix("this._uniffiClonePointer()", meth) %};
     }
     {% endmatch %}
     {% endfor %}
@@ -61,7 +61,7 @@
     {%- match tm %}
     {%- when UniffiTrait::Display { fmt } %}
     public override string ToString() {
-        return {{ Type::String.borrow()|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this.GetHandle()", fmt) %});
+        return {{ Type::String.borrow()|lift_fn }}({%- call cs::to_ffi_call_with_prefix("this._uniffiClonePointer()", fmt) %});
     }
     {%- else %}
     {%- endmatch %}
@@ -76,21 +76,27 @@
     }
     {% endfor %}
     {% endif %}
+
+    public IntPtr _uniffiClonePointer() {
+        return _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
+            return _UniFFILib.{{ obj.ffi_object_clone().name() }}(this.GetHandle(), ref status);
+        });
+    }
 }
 
-class {{ obj|ffi_converter_name }}: FfiConverter<{{ type_name }}, {{ safe_handle_type }}> {
+class {{ obj|ffi_converter_name }}: FfiConverter<{{ type_name }}, IntPtr> {
     public static {{ obj|ffi_converter_name }} INSTANCE = new {{ obj|ffi_converter_name }}();
 
-    public override {{ safe_handle_type }} Lower({{ type_name }} value) {
-        return value.GetHandle();
+    public override IntPtr Lower({{ type_name }} value) {
+        return value._uniffiClonePointer();
     }
 
-    public override {{ type_name }} Lift({{ safe_handle_type }} value) {
+    public override {{ type_name }} Lift(IntPtr value) {
         return new {{ type_name }}(value);
     }
 
     public override {{ type_name }} Read(BigEndianStream stream) {
-        return Lift(new {{ safe_handle_type }}(new IntPtr(stream.ReadLong())));
+        return Lift(new IntPtr(stream.ReadLong()));
     }
 
     public override int AllocationSize({{ type_name }} value) {
@@ -98,6 +104,6 @@ class {{ obj|ffi_converter_name }}: FfiConverter<{{ type_name }}, {{ safe_handle
     }
 
     public override void Write({{ type_name }} value, BigEndianStream stream) {
-        stream.WriteLong(Lower(value).DangerousGetRawFfiValue().ToInt64());
+        stream.WriteLong(Lower(value).ToInt64());
     }
 }
