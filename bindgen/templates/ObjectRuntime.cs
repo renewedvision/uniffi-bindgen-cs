@@ -6,6 +6,16 @@
 // method will only be called once, once all outstanding native calls have completed.
 // https://github.com/mozilla/uniffi-rs/blob/0dc031132d9493ca812c3af6e7dd60ad2ea95bf0/uniffi_bindgen/src/bindings/kotlin/templates/ObjectRuntime.kt#L31
 // https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.criticalhandle
+//
+// SafeHandle is used to manage ownership of the Rust object. When SafeHandle goes out of scope,
+// the underlying Rust reference is decremented. Method calls and lowering increment ("clone")
+// object reference, and Rust is responsible for decrementing the reference. This means, it's not
+// necessary to use SafeHandle directly for method calls and lowering, since Rust will take care
+// of decrementing the reference.
+//
+// However, it's still necessary to use SafeHandle for "cloning" the reference, since CG may choose
+// to collect the object itself and run the finalizer, in turn decrementing Rust reference and
+// causing use-after-free during "clone" native call. (See SafeHandle documentation).
 
 {{ config.access_modifier() }} abstract class FFIObject<THandle>: IDisposable where THandle : FFISafeHandle {
     private THandle handle;
@@ -35,18 +45,6 @@
         get {
             return handle.ToInt64() == 0;
         }
-    }
-
-    // TODO(CS) this completely breaks any guarantees offered by SafeHandle.. Extracting
-    // raw value from SafeHandle puts responsiblity on the consumer of this function to
-    // ensure that SafeHandle outlives the stream, and anyone who might have read the raw
-    // value from the stream and are holding onto it. Otherwise, the result might be a use
-    // after free, or free while method calls are still in flight.
-    //
-    // This is also relevant for Kotlin.
-    //
-    public IntPtr DangerousGetRawFfiValue() {
-        return handle;
     }
 }
 
