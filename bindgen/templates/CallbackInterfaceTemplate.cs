@@ -28,11 +28,17 @@
 // The ForeignCallback that is passed to Rust.
 class {{ foreign_callback }} {
     {%- for (ffi_callback, meth) in vtable_methods.iter() %}
-
     static {% call cs::ffi_return_type(ffi_callback) %} {{ meth.name()|var_name }}({% call cs::arg_list_ffi_decl_xx(ffi_callback) %}) {
-
+        Console.WriteLine("XAXAXAXA");
+        var uniffiObj = {{ type_|lift_fn }}(uniffiHandle);
+        uniffiObj.{{ meth.name()|fn_name() }}(
+            {%- for arg in meth.arguments() -%}
+            {{ arg|lift_fn }}({{ arg.name()|var_name }})
+            {%- if !loop.last %}, {% endif -%}
+            {%- endfor -%}
+        );
     }
-    {%- endfor %}
+    {% endfor %}
 
     static void uniffiFree(ulong handle) {
         {{ ffi_converter_name }}.INSTANCE.Drop(handle);
@@ -41,11 +47,28 @@ class {{ foreign_callback }} {
     // vtable struct must be static. Storing references to static methods in a static struct ensures
     // that implicit delegates are not garbage collected (referencing a static method creates an
     // implicit delegate object).
+    // public static GCHandle _uniffiVTable = GCHandle.Alloc(new _UniFFILib.{{ vtable|ffi_type_name }} {
+    //     {%- for (ffi_callback, meth) in vtable_methods.iter() %}
+    //     // {{ meth.name()|var_name() }} = GCHandle.Alloc({{ meth.name()|var_name() }}, GCHandleType.Pinned).AddrOfPinnedObject(),
+    //     {{ meth.name()|var_name() }} = {{ meth.name()|var_name() }},
+    //     {%- endfor %}
+    //     uniffiFree = uniffiFree
+    //     // uniffiFree = GCHandle.Alloc(uniffiFree, GCHandleType.Pinned).AddrOfPinnedObject()
+    // }, GCHandleType.Pinned);
+
+
+    // ############################################################################################
+    // BIG TODO: I THINK CASTING STATIC FUNCTION TO A DELEGATE IS WRONG. REFERNCING STATIC FUNCTION
+    // SIMPLY CREATES A NEW, LOCAL DELEGATE OBJECT, ALLOWING GC TO COLLECT IT.
+    // ############################################################################################
+
     public static _UniFFILib.{{ vtable|ffi_type_name }} _uniffiVTable = new _UniFFILib.{{ vtable|ffi_type_name }} {
         {%- for (ffi_callback, meth) in vtable_methods.iter() %}
-        {{ meth.name()|var_name() }} = {{ meth.name()|var_name() }},
+        // {{ meth.name()|var_name() }} = GCHandle.Alloc({{ meth.name()|var_name() }}, GCHandleType.Pinned).AddrOfPinnedObject(),
+        {{ meth.name()|var_name() }} = Marshal.GetFunctionPointerForDelegate((_UniFFILib.{{ ffi_callback.name()|ffi_callback_name }}){{ meth.name()|var_name() }}),
         {%- endfor %}
-        uniffiFree = uniffiFree
+        @uniffiFree = Marshal.GetFunctionPointerForDelegate((_UniFFILib.UniffiCallbackInterfaceFree)@uniffiFree)
+        // uniffiFree = GCHandle.Alloc(uniffiFree, GCHandleType.Pinned).AddrOfPinnedObject()
     };
 
     {#
@@ -133,7 +156,25 @@ class {{ foreign_callback }} {
 class {{ ffi_converter_name }}: FfiConverterCallbackInterface<{{ type_name }}> {
     public static {{ ffi_converter_name }} INSTANCE = new {{ ffi_converter_name }}();
 
+    static RandomStruct RANDOM_STRUCT = new RandomStruct{a=100, b=101, c=103, d=104};
+
     public override void Register() {
+        Console.WriteLine("Register");
+
+
+        // _UniFFILib.{{ cbi.ffi_init_callback().name() }}({{ foreign_callback }}._uniffiVTable.AddrOfPinnedObject());
+        // ref *(SomeStruct*)ptr.ToPointer()
+        // unsafe {
+        //     _UniFFILib.{{ cbi.ffi_init_callback().name() }}(
+        //         ref *(_UniFFILib.{{ vtable|ffi_type_name }}*){{ foreign_callback }}._uniffiVTable.AddrOfPinnedObject());
+        // }
+        // _UniFFILib.{{ cbi.ffi_init_callback().name() }}(
+        //     ref Marshal.PtrToStructure<_UniFFILib.{{ vtable|ffi_type_name }}>({{ foreign_callback }}._uniffiVTable.AddrOfPinnedObject()));
+        // _UniFFILib.{{ cbi.ffi_init_callback().name() }}(ref Marshal.PtrToStructure<_UniFFILib.{{ vtable|ffi_type_name }}>({{ foreign_callback }}._uniffiVTable.AddrOfPinnedObject()));
         _UniFFILib.{{ cbi.ffi_init_callback().name() }}(ref {{ foreign_callback }}._uniffiVTable);
+
+        // var handle = GCHandle.Alloc(new RandomStruct{a=100, b=101, c=103, d=104}, GCHandleType.Pinned);
+        // _UniFFILib.{{ cbi.ffi_init_callback().name() }}(handle.AddrOfPinnedObject());
+        // _UniFFILib.{{ cbi.ffi_init_callback().name() }}(ref RANDOM_STRUCT);
     }
 }

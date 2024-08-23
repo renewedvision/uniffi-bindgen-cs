@@ -84,3 +84,11 @@ static class FFIObjectUtil {
         }
     }
 }
+
+[StructLayout(LayoutKind.Sequential)]
+struct RandomStruct {
+    public long a;
+    public long b;
+    public long c;
+    public long d;
+}

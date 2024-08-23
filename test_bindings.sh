@@ -7,4 +7,4 @@ SOLUTION_DIR="dotnet-tests"
 
 export LD_LIBRARY_PATH="$SCRIPT_DIR/target/debug/:${LD_LIBRARY_PATH:-}"
 cd $SOLUTION_DIR
-dotnet test -l "console;verbosity=normal"
+dotnet test -l "console;verbosity=normal" --filter VoidCallbackExceptions
