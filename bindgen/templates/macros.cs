@@ -98,7 +98,11 @@ fun {{ func.name()|fn_name }}(
 {%- endmacro %}
 
 {%- macro docstring(defn, indent_spaces) %}
-{%- match defn.docstring() %}
+{%- call docstring_value(defn.docstring(), indent_spaces) %}
+{%- endmacro %}
+
+{%- macro docstring_value(maybe_docstring, indent_spaces) %}
+{%- match maybe_docstring %}
 {%- when Some(docstring) %}
 {{ docstring|docstring(indent_spaces) }}
 {%- else %}

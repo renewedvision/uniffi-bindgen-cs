@@ -267,7 +267,6 @@ impl<T: AsType> AsCodeType for T {
             Type::CallbackInterface { name, .. } => {
                 Box::new(callback_interface::CallbackInterfaceCodeType::new(name))
             }
-            Type::ForeignExecutor => panic!("TODO implement async"),
             Type::Optional { inner_type } => {
                 Box::new(compounds::OptionalCodeType::new(*inner_type))
             }
@@ -342,8 +341,6 @@ impl CsCodeOracle {
             FfiType::RustBuffer(_) => "RustBuffer".to_string(),
             FfiType::ForeignBytes => "ForeignBytes".to_string(),
             FfiType::ForeignCallback => "ForeignCallback".to_string(),
-            FfiType::ForeignExecutorHandle => panic!("TODO implement async"),
-            FfiType::ForeignExecutorCallback => panic!("TODO implement async"),
             FfiType::RustFutureHandle => "IntPtr".to_string(),
             FfiType::RustFutureContinuationCallback => "IntPtr".to_string(),
             FfiType::RustFutureContinuationData => "IntPtr".to_string(),
